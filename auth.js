@@ -1,38 +1,36 @@
-/**
- * Created by kgrube on 5/2/2017.
- */
-const basicAuth = require('basic-auth');
-const request = require('request');
+const basicAuth = require('basic-auth')
+const { AutomateAPI } = require('connectwise-rest')
 
+const { CWA_SERVER_URL } = process.env
+
+/**
+ * Example authentication function, do not use this in production
+ */
 exports.checkMemberCredentials = (req, res, next) => {
   // decode basic auth
-  const authorization = basicAuth(req);
-  request.post({
-    url: `https://${process.env.CW_COMPANY_URL}/v4_6_release/login/login.aspx?response=json`,
-    form: {
-      CompanyName: process.env.CW_COMPANY_ID,
-      UserName: authorization.name,
-      Password: authorization.pass,
-      ChkSharedComputer: false,
-    },
-  }, (err, response, body) => {
-    if (err) {
-      return next(err);
-    }
+  const auth = basicAuth(req)
 
-    let parsed = {};
-    try {
-      parsed = JSON.parse(body);
-    } catch (parseError) {
-      // CW server returned jibberish
-      return next(parseError);
-    }
+  if (!auth) {
+    res.status(401).send('unauthorized')
+    return
+  }
 
-    // successful login
-    if (parsed.Success) {
-      return next();
-    }
-    // send client error message
-    res.status(401).json(parsed);
-  });
-};
+  const { name, pass } = auth
+
+  // check username, password against automate API
+  // or your other authentication service
+  // passport.js would be a good drop in here as well
+  AutomateAPI.getToken({
+    username: name,
+    password: pass,
+    serverUrl: CWA_SERVER_URL,
+  })
+    .then((result) => {
+      // if the token request was not successful
+      if (!result.AccessToken) {
+        res.status(401).send('unauthorized')
+      }
+      next()
+    })
+    .catch((err) => next(err))
+}

@@ -8,69 +8,51 @@
 /**
  * Load environment variables from .env file, where API keys and passwords are configured.
  */
-require('dotenv').config({path: '.env'});
-const pmx = require('pmx');
-pmx.init({
-  http: true,
-  errors: true,
-  custom_probes: true,
-  network: true,
-  ports: true,
-});
-const auth = require('./auth');
-const bodyParser = require('body-parser');
-const express = require('express');
-const expressValidator = require('express-validator');
-const logger = require('morgan');
+require('dotenv').config({ path: '.env' })
 
-const app = express();
+const auth = require('./auth')
+const bodyParser = require('body-parser')
+const express = require('express')
+const expressValidator = require('express-validator')
+const logger = require('morgan')
+const app = express()
 
-app.set('x-powered-by', false);
-app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(expressValidator({
-  customSanitizers: {
-    toNumeric: value => value.replace(/\D/g, ''),
-    toLowerCase: value => value.toLowerCase(),
-  },
-}));
+// app setup
+app.set('x-powered-by', false)
+app.use(logger('dev'))
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true }))
 
 /*
  * Required if express is behind a proxy, e.g. Heroku, nginx
  * https://github.com/expressjs/session/blob/master/README.md
  */
-app.set('trust proxy', process.env.TRUST_PROXY === 1 ? 1 : 0);
+app.set('trust proxy', process.env.TRUST_PROXY === 1 ? 1 : 0)
 
-app.use(auth.checkMemberCredentials);
-
+// check every request for auth
+app.use(auth.checkMemberCredentials)
 
 // routes
-const routes = require('./routes');
-app.use(routes);
+const routes = require('./routes')
+
+// mount
+app.use('/', routes, (req, res) => res.sendStatus(401))
 
 // Catch all route, return 404 if none of the above routes matched
-app.all('*', (req, res) => res.sendStatus(404).end('NOT FOUND'));
+app.all('*', (req, res) => {
+  res.status(404).send('NOT FOUND')
+})
 
-app.use(pmx.expressErrorHandler());
+const port = process.env.PORT ? process.env.PORT : 3000
+const host = process.env.HOST ? process.env.HOST : 'localhost'
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json(err);
-});
-
-const port = process.env.PORT ? process.env.PORT : 3000;
-const host = process.env.HOST ? process.env.HOST : 'localhost';
-
-const runnable = app.listen(port, err => {
+// start http server
+app.listen(port, (err) => {
   if (err) {
-    console.error('HTTP Startup Error', err);
+    console.error('HTTP Startup Error', err)
   }
 
-  console.log('\t==> 👌 Listening on https://%s:%s/', host, port);
-});
+  console.log('\t==> 🚀 Listening on https://%s:%s/', host, port)
+})
 
-
-process.on('unhandledRejection', reason => console.error('UnhandledRejection', reason, new Error('UnhandledRejection').stack));
-
-module.exports = app;
+module.exports = app
