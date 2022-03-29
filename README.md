@@ -1,4 +1,4 @@
-#cw-micro
+# cw-micro
 This is a sample Express based app that will proxy requests from the ConnectWise Manage and ConnectWise Automate APIs using [connectwise-rest](https://github.com/covenanttechnologysolutions/connectwise-rest) package.
 
 ## Local Setup
